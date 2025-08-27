@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\WhiteboardSession;
 use Illuminate\Http\Request;
 use App\Events\WhiteboardUpdated;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class WhiteboardSessionController extends Controller
 {
@@ -79,5 +81,28 @@ class WhiteboardSessionController extends Controller
     {
         // Stateless: returns empty by default; can be extended to cache last shared state if needed
         return response()->json(['data' => [ 'nodes' => [], 'edges' => [] ]]);
+    }
+
+    // Presence tracking (simple cache-based heartbeat)
+    public function presenceHeartbeat(Request $request)
+    {
+        $clientId = (string) ($request->input('clientId') ?: Str::uuid());
+        $now = time();
+        $key = 'presence:whiteboard';
+        $list = Cache::get($key, []);
+        $list[$clientId] = $now;
+        // Prune entries older than 20s
+        $list = array_filter($list, function ($ts) use ($now) { return ($now - (int)$ts) <= 20; });
+        Cache::put($key, $list, 60);
+        return response()->json(['clientId' => $clientId, 'count' => count($list)]);
+    }
+
+    public function presenceCount()
+    {
+        $now = time();
+        $key = 'presence:whiteboard';
+        $list = Cache::get($key, []);
+        $list = array_filter($list, function ($ts) use ($now) { return ($now - (int)$ts) <= 20; });
+        return response()->json(['count' => count($list)]);
     }
 }

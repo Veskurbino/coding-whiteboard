@@ -70,6 +70,7 @@
 		<button type="button" id="loadSharedBtn">Load</button>
 		<span id="sessionStatus" class="small"></span>
 		<span id="wsDot" class="dot connecting" title="WebSocket status"></span>
+		<span id="presenceCount" class="small" style="margin-left:8px;">Clients: 1</span>
 	</div>
 
 	<div id="boardWrap">
@@ -157,6 +158,7 @@
 		const langSelect = document.getElementById('langSelect');
 		const aiPreview = document.getElementById('aiPreview');
 		const copyCodeBtn = document.getElementById('copyCodeBtn');
+		const presenceCountEl = document.getElementById('presenceCount');
 
 		const HLJS_LANG_CDN = {
 			php: 'php', java: 'java', csharp: 'csharp', cpp: 'cpp', python: 'python',
@@ -255,6 +257,7 @@
 
 		const clientId = Math.random().toString(36).slice(2, 10);
 		let broadcastTimer = null;
+		let presenceTimer = null;
 
 		function getNodeHeight(n) {
 			const titleH = 26;
@@ -464,6 +467,14 @@
 				statusEl.textContent = `WebSocket ${host}:${port} → ${states.current}`;
 				wsDot.classList.remove('connected','connecting','disconnected');
 				wsDot.classList.add(states.current === 'connected' ? 'connected' : (states.current === 'connecting' ? 'connecting' : 'disconnected'));
+				if (states.current === 'connected') {
+					clearInterval(presenceTimer);
+					presenceTimer = setInterval(() => { sendPresenceHeartbeat(); }, 5000);
+					sendPresenceHeartbeat();
+					refreshPresenceCount();
+				} else if (states.current === 'disconnected') {
+					clearInterval(presenceTimer);
+				}
 			});
 			pusherClient.connection.bind('error', (err) => {
 				console.error('Pusher error', err);
@@ -521,6 +532,30 @@
 			applyWhiteboard(e.data);
 			sessionStatus.textContent = 'Synced'; setTimeout(()=>sessionStatus.textContent='', 800);
 		});
+
+		async function sendPresenceHeartbeat() {
+			try {
+				const resp = await fetch('/api/v1/presence/heartbeat', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+					body: JSON.stringify({ clientId })
+				});
+				if (!resp.ok) throw new Error('HTTP ' + resp.status);
+				const json = await resp.json();
+				presenceCountEl.textContent = 'Clients: ' + (json.count || 1);
+			} catch (e) {
+				// keep silent, maybe offline temporarily
+			}
+		}
+
+		async function refreshPresenceCount() {
+			try {
+				const resp = await fetch('/api/v1/presence/count');
+				if (!resp.ok) throw new Error('HTTP ' + resp.status);
+				const json = await resp.json();
+				presenceCountEl.textContent = 'Clients: ' + (json.count || 1);
+			} catch (_) {}
+		}
 
 		saveSharedBtn.onclick = () => saveShared();
 		loadSharedBtn.onclick = () => loadShared();

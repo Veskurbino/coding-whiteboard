@@ -40,4 +40,8 @@ Route::prefix('v1')->group(function () {
     // Shared whiteboard (no session)
     Route::post('whiteboard/save', [WhiteboardSessionController::class, 'saveShared']);
     Route::get('whiteboard/load', [WhiteboardSessionController::class, 'loadShared']);
+
+    // Presence (connected clients)
+    Route::post('presence/heartbeat', [WhiteboardSessionController::class, 'presenceHeartbeat']);
+    Route::get('presence/count', [WhiteboardSessionController::class, 'presenceCount']);
 });
