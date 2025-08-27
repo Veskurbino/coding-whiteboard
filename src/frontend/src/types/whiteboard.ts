@@ -11,6 +11,7 @@ export type BaseElement = {
   createdAt: number;
   updatedAt: number;
   selected?: boolean;
+  open?: boolean;
 };
 
 export type RectElement = BaseElement & {

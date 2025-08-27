@@ -65,28 +65,29 @@ export default function WhiteboardCanvas() {
       return;
     }
     if (tool === "select") {
-      selectElement(undefined);
       return;
     }
     const { x, y } = stagePointerPos();
     if (tool === "rect") {
       const groupId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const rectId = addElement({ type: "rect", position: { x, y }, width: 1, height: 1, groupId });
-      addElement({ type: "text", position: { x, y }, text: "", fontSize: 16, align: "center", groupId });
+      const rectId = addElement({ type: "rect", position: { x, y }, width: 300, height: 200, groupId });
+      const labelId = addElement({ type: "text", position: { x, y }, text: "", fontSize: 16, align: "center", groupId });
+      updateElement(labelId, (prev: any) => ({ ...prev, position: { x: x + 150, y: y + 100 } }));
       setDrawingId(rectId);
     } else if (tool === "ellipse") {
       const groupId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const ellId = addElement({ type: "ellipse", position: { x, y }, width: 1, height: 1, groupId });
-      addElement({ type: "text", position: { x, y }, text: "", fontSize: 16, align: "center", groupId });
+      const ellId = addElement({ type: "ellipse", position: { x, y }, width: 300, height: 200, groupId });
+      const labelId = addElement({ type: "text", position: { x, y }, text: "", fontSize: 16, align: "center", groupId });
+      updateElement(labelId, (prev: any) => ({ ...prev, position: { x: x + 150, y: y + 100 } }));
       setDrawingId(ellId);
     } else if (tool === "arrow") {
-      const id = addElement({ type: "arrow", position: { x, y }, points: [x, y, x + 1, y + 1] });
+      const id = addElement({ type: "arrow", position: { x, y }, points: [x, y, x + 100, y + 100] });
       setDrawingId(id);
     } else if (tool === "text") {
       const id = addElement({ type: "text", position: { x, y }, text: "Text" });
       selectElement(id);
     } else if (tool === "code") {
-      const id = addElement({ type: "code", position: { x, y }, width: 320, height: 200, code: "", language: "typescript" });
+      const id = addElement({ type: "code", position: { x, y }, width: 300, height: 200, code: "", language: "typescript" });
       selectElement(id);
     }
   };
@@ -156,13 +157,17 @@ export default function WhiteboardCanvas() {
           switch (el.type) {
             case "rect":
               return (
-                <Group key={el.id} onClick={() => onElementClick(el)}>
+                <Group
+                  key={el.id}
+                  onClick={() => onElementClick(el)}
+                  draggable
+                >
                   <Rect
                     x={el.position.x}
                     y={el.position.y}
-                    width={el.width || 0}
-                    height={el.height || 0}
-                    fill="#ffffff"
+                    width={el.width || 300}
+                    height={el.height || 200}
+                    fill="#feff9c"
                     stroke={el.selected ? "#2563eb" : "#111827"}
                     strokeWidth={el.selected ? 2 : 1}
                   />
@@ -176,7 +181,7 @@ export default function WhiteboardCanvas() {
                           y={(label.position.y || 0) - 8}
                           width={(el.width || 0) - 16}
                           align={(label as any).align || "center"}
-                          text={(label as any).text || ""}
+                          text={(label as any).text || "Double click to edit"}
                           fontSize={(label as any).fontSize || 16}
                           fill="#111827"
                         />
@@ -186,7 +191,11 @@ export default function WhiteboardCanvas() {
               );
             case "ellipse":
               return (
-                <Group key={el.id} onClick={() => onElementClick(el)}>
+                <Group
+                  key={el.id}
+                  onClick={() => onElementClick(el)}
+                  draggable
+                >
                   <Ellipse
                     x={(el.position.x || 0) + (el.width || 0) / 2}
                     y={(el.position.y || 0) + (el.height || 0) / 2}
@@ -206,7 +215,7 @@ export default function WhiteboardCanvas() {
                           y={(label.position.y || 0) - 8}
                           width={(el.width || 0)}
                           align={(label as any).align || "center"}
-                          text={(label as any).text || ""}
+                          text={(label as any).text || "Double click to edit"}
                           fontSize={(label as any).fontSize || 16}
                           fill="#111827"
                         />
@@ -240,7 +249,11 @@ export default function WhiteboardCanvas() {
               );
             case "code":
               return (
-                <Group key={el.id} onClick={() => onElementClick(el)}>
+                <Group
+                  key={el.id}
+                  onClick={() => onElementClick(el)}
+                  draggable
+                >
                   <Rect
                     x={el.position.x}
                     y={el.position.y}
@@ -254,7 +267,7 @@ export default function WhiteboardCanvas() {
                   <Text
                     x={(el.position.x || 0) + 8}
                     y={(el.position.y || 0) + 8}
-                    text={(el as any).language.toUpperCase() + " block"}
+                    text={el.code || "Double click to edit"}
                     fontSize={12}
                     fill="#93c5fd"
                   />

@@ -6,10 +6,9 @@ import React from "react";
 const TOOLS: { id: Tool; label: string }[] = [
   { id: "select", label: "Select" },
   { id: "pan", label: "Pan" },
-  { id: "rect", label: "Rect" },
+  { id: "rect", label: "Note" },
   { id: "ellipse", label: "Ellipse" },
   { id: "arrow", label: "Arrow" },
-  { id: "text", label: "Text" },
   { id: "code", label: "Code" },
 ];
 
