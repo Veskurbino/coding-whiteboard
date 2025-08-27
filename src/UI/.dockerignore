@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+dist
+Dockerfile
+docker-compose.yml
+.dockerignore
+.git
+.gitignore
+.vscode
+.env
+.env.*
+coverage
+*.log
+npm-debug.log
+pnpm-lock.yaml
+yarn.lock
