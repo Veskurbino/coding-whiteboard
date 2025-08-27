@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\NodeController;
 use App\Http\Controllers\Api\V1\EdgeController;
 use App\Http\Controllers\Api\V1\SnapshotController;
 use App\Http\Controllers\Api\V1\AnalyzeController;
+use App\Http\Controllers\Api\V1\WhiteboardSessionController;
 
 Route::prefix('v1')->group(function () {
     Route::get('/health', fn () => ['status' => 'ok']);
@@ -22,7 +23,7 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('nodes', NodeController::class)->only(['store', 'show', 'update', 'destroy']);
     Route::apiResource('edges', EdgeController::class)->only(['store', 'show', 'update', 'destroy']);
 
-    // Snapshots nested under canvas
+    // Snapshots
     Route::get('canvases/{canvas}/snapshots', [SnapshotController::class, 'index']);
     Route::post('canvases/{canvas}/snapshots', [SnapshotController::class, 'store']);
     Route::get('canvases/{canvas}/snapshots/{snapshot}', [SnapshotController::class, 'show']);
@@ -30,4 +31,13 @@ Route::prefix('v1')->group(function () {
 
     // Analyze (Gemini)
     Route::post('analyze', [AnalyzeController::class, 'analyze']);
+
+    // Whiteboard sessions
+    Route::apiResource('sessions', WhiteboardSessionController::class);
+    Route::post('sessions/{session}/save', [WhiteboardSessionController::class, 'saveData']);
+    Route::get('sessions/{session}/load', [WhiteboardSessionController::class, 'loadData']);
+
+    // Shared whiteboard (no session)
+    Route::post('whiteboard/save', [WhiteboardSessionController::class, 'saveShared']);
+    Route::get('whiteboard/load', [WhiteboardSessionController::class, 'loadShared']);
 });
