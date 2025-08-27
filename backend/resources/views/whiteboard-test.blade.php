@@ -52,7 +52,11 @@
 		.dot.connected { background: var(--brand-600); }
 		.dot.connecting { background: #f59e0b; }
 		/* keep AI preview dark theme */
-		#aiPreviewWrap { border-color: #ddd; background: transparent; }
+		#aiPreviewWrap { border-color: #ddd; background: transparent; position: relative; }
+		/* Copy button */
+		#copyCodeBtn { position: absolute; top: 6px; right: 6px; border-radius: 6px; padding: 6px 8px; display: inline-flex; align-items: center; gap: 6px; background: var(--brand-600); border: 1px solid var(--brand-700); color: #fff; }
+		#copyCodeBtn:hover { background: var(--brand-700); }
+		#copyCodeBtn svg { width: 16px; height: 16px; fill: currentColor; }
 	</style>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
 </head>
@@ -108,7 +112,13 @@
 	</div>
 
 	<div class="badge" style="margin-top: 1em;">AI Response (code)</div>
-	<div id="aiPreviewWrap"><pre><code id="aiPreview" class="language-php"></code></pre></div>
+	<div id="aiPreviewWrap">
+		<button id="copyCodeBtn" title="Copy code to clipboard" aria-label="Copy code">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+			<span>Copy</span>
+		</button>
+		<pre><code id="aiPreview" class="language-php"></code></pre>
+	</div>
 
 	<div id="messages" style="margin-top: 1em;">
 		<em>Waiting for messages...</em>
@@ -146,6 +156,7 @@
 		const loadSharedBtn = document.getElementById('loadSharedBtn');
 		const langSelect = document.getElementById('langSelect');
 		const aiPreview = document.getElementById('aiPreview');
+		const copyCodeBtn = document.getElementById('copyCodeBtn');
 
 		const HLJS_LANG_CDN = {
 			php: 'php', java: 'java', csharp: 'csharp', cpp: 'cpp', python: 'python',
@@ -167,15 +178,6 @@
 			document.head.appendChild(s);
 		}
 
-		function highlightPreviewWithRetry(retries = 20) {
-			try {
-				if (window.hljs && typeof hljs.highlightElement === 'function') {
-					hljs.highlightElement(aiPreview);
-					return;
-				}
-			} catch (_) {}
-			if (retries > 0) setTimeout(() => highlightPreviewWithRetry(retries - 1), 100);
-		}
 		function renderPreview(codeText) {
 			if (!aiPreview) return;
 			const desiredLang = languageSpec(langSelect.value).hljs;
@@ -200,8 +202,10 @@
 		}
 		function cleanAiText(text) {
 			let t = (text || '').trim();
-			const fenceMatch = t.match(/^```[a-zA-Z0-9]*\n([\s\S]*?)```\s*$/);
-			if (fenceMatch) t = fenceMatch[1];
+			// Prefer the first fenced code block if present (handles multiple blocks)
+			const firstFence = t.match(/```[a-zA-Z0-9]*\n([\s\S]*?)```/);
+			if (firstFence) t = firstFence[1];
+			// Strip wrapping quotes if model returned a quoted string
 			if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith('\'') && t.endsWith('\''))) {
 				t = t.slice(1, -1);
 			}
@@ -224,7 +228,7 @@
 		function setPreviewLanguage(langKey) {
 			const spec = languageSpec(langKey);
 			aiPreview.className = 'language-' + spec.hljs;
-			ensureHljsLanguage(spec.hljs, () => highlightPreviewWithRetry());
+			ensureHljsLanguage(spec.hljs, () => renderPreview(aiPreview.textContent));
 		}
 
 		const canvas = document.getElementById('board');
@@ -536,6 +540,40 @@
 			messages.appendChild(div);
 		});
 
+		async function copyPlainText(text) {
+			try {
+				if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(text);
+					return true;
+				}
+			} catch (_) {}
+			try {
+				const ta = document.createElement('textarea');
+				ta.value = text;
+				ta.setAttribute('readonly', '');
+				ta.style.position = 'fixed';
+				ta.style.top = '-9999px';
+				document.body.appendChild(ta);
+				ta.focus();
+				ta.select();
+				const ok = document.execCommand('copy');
+				document.body.removeChild(ta);
+				if (ok) return true;
+			} catch (_) {}
+			try {
+				window.prompt('Press Ctrl/Cmd+C to copy, then Enter', text);
+				return false;
+			} catch (_) {}
+			return false;
+		}
+
+		copyCodeBtn.addEventListener('click', async () => {
+			const plain = aiPreview ? aiPreview.textContent : '';
+			const success = await copyPlainText(plain || '');
+			copyCodeBtn.querySelector('span').textContent = success ? 'Copied' : 'Copy';
+			setTimeout(() => { copyCodeBtn.querySelector('span').textContent = 'Copy'; }, 1400);
+		});
+
 		sendForm.addEventListener('submit', async (ev) => {
 			ev.preventDefault();
 			sendResult.textContent = 'Sending...';
@@ -553,7 +591,7 @@
 			try {
 				const program = { classes: nodes.filter(n => n.type === 'class').map(n => ({ id: n.id, name: n.label, properties: n.properties, methods: n.methods })), interfaces: nodes.filter(n => n.type === 'interface').map(n => ({ id: n.id, name: n.label, methods: n.methods, properties: n.properties })), modules: nodes.filter(n => n.type === 'module').map(n => ({ id: n.id, name: n.label })), relationships: edges.map(e => ({ source: e.source, target: e.target, type: e.kind || 'association' })) };
 				const spec = languageSpec(langSelect.value);
-				const summary = `You are an expert ${spec.name} engineer. Generate a complete, idiomatic ${spec.name} codebase from the provided program model. ${spec.guidance} Use object-oriented design where appropriate. Output ONLY ${spec.name} code (no explanations).`;
+				const summary = `You are an expert ${spec.name} engineer. From the provided program model, generate ONLY the library/source code: classes, interfaces, modules, and their members. Do NOT include example usage, entrypoints, bootstrapping, Composer/autoload code, CLI demos, tests, or scaffolding. No markdown/backticks. Return a single contiguous ${spec.name} code snippet only (you may include minimal file header comments like // File: Class.php if needed). ${spec.guidance} Use object-oriented design where appropriate.`;
 				const resp = await fetch('/api/v1/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ graph: program, summary }) });
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
 				const data = await resp.json();
