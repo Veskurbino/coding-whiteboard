@@ -30,6 +30,7 @@ A real-time collaborative code whiteboard platform that allows multiple users to
 1. **Framework**
    - React.js with TypeScript
    - Next.js for server-side rendering and routing
+   - Laravel
 
 2. **UI Components**
    - Konva.js for canvas manipulation
@@ -42,8 +43,8 @@ A real-time collaborative code whiteboard platform that allows multiple users to
 
 ### Backend Technologies
 1. **Server**
-   - Node.js with Express.js or NestJS
-   - TypeScript for type safety
+   - Laravel
+   - PHP
 
 2. **Real-time Communication**
    - WebSocket (Socket.io)
@@ -89,4 +90,5 @@ A real-time collaborative code whiteboard platform that allows multiple users to
 - Enhanced UI/UX
 
 This document serves as a living guide and should be updated as the product evolves and new requirements are identified.
+
 
