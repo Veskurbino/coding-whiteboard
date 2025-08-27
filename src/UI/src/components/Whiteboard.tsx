@@ -41,25 +41,60 @@ function overlapsAny(pos: { x: number; y: number }, size: { width: number; heigh
   return blocks.some((b) => overlaps(rect, b));
 }
 
-function findNonOverlappingPosition(desired: { x: number; y: number }, size: { width: number; height: number }, blocks: BlockLike[], maxRadiusSteps = 8) {
+function findNonOverlappingPosition(desired: { x: number; y: number }, size: { width: number; height: number }, blocks: BlockLike[], maxRadiusSteps = 24) {
   const snapped = snapToGrid(desired.x, desired.y);
   if (!overlapsAny(snapped, size, blocks)) return snapped;
-  const directions = [
-    [GRID_SIZE, 0],
-    [-GRID_SIZE, 0],
-    [0, GRID_SIZE],
-    [0, -GRID_SIZE],
-    [GRID_SIZE, GRID_SIZE],
-    [-GRID_SIZE, GRID_SIZE],
-    [GRID_SIZE, -GRID_SIZE],
-    [-GRID_SIZE, -GRID_SIZE]
+
+  // Compute center helpers
+  const centerOf = (r: { x: number; y: number; width: number; height: number }) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+  const rect = { x: snapped.x, y: snapped.y, width: size.width, height: size.height };
+  const c = centerOf(rect);
+
+  // Find nearest blocking block by center distance
+  const nearest = blocks
+    .map((b) => ({ b, dist: Math.hypot(centerOf(b).x - c.x, centerOf(b).y - c.y) }))
+    .sort((a, b) => a.dist - b.dist)[0]?.b;
+
+  // Primary push direction away from nearest blocker
+  const directions: Array<[number, number]> = [];
+  if (nearest) {
+    const nb = centerOf(nearest);
+    const vx = c.x - nb.x;
+    const vy = c.y - nb.y;
+    const ax = Math.abs(vx);
+    const ay = Math.abs(vy);
+    if (ax >= ay) {
+      directions.push([vx >= 0 ? GRID_SIZE : -GRID_SIZE, 0]);
+      directions.push([0, vy >= 0 ? GRID_SIZE : -GRID_SIZE]);
+    } else {
+      directions.push([0, vy >= 0 ? GRID_SIZE : -GRID_SIZE]);
+      directions.push([vx >= 0 ? GRID_SIZE : -GRID_SIZE, 0]);
+    }
+  }
+  // Add diagonals and opposite as fallbacks
+  directions.push([GRID_SIZE, GRID_SIZE], [-GRID_SIZE, GRID_SIZE], [GRID_SIZE, -GRID_SIZE], [-GRID_SIZE, -GRID_SIZE], [GRID_SIZE, 0], [-GRID_SIZE, 0], [0, GRID_SIZE], [0, -GRID_SIZE]);
+
+  // Walk along prioritized directions increasing radius until free
+  for (const [dx, dy] of directions) {
+    for (let r = 1; r <= maxRadiusSteps; r++) {
+      const candidate = { x: snapped.x + dx * r, y: snapped.y + dy * r };
+      const snappedCandidate = snapToGrid(candidate.x, candidate.y);
+      if (!overlapsAny(snappedCandidate, size, blocks)) return snappedCandidate;
+    }
+  }
+
+  // Exhaustive radial search as last resort
+  const ringDirs: Array<[number, number]> = [
+    [GRID_SIZE, 0], [-GRID_SIZE, 0], [0, GRID_SIZE], [0, -GRID_SIZE],
+    [GRID_SIZE, GRID_SIZE], [-GRID_SIZE, GRID_SIZE], [GRID_SIZE, -GRID_SIZE], [-GRID_SIZE, -GRID_SIZE]
   ];
-  for (let radius = 1; radius <= maxRadiusSteps; radius++) {
-    for (const [dx, dy] of directions) {
-      const candidate = { x: snapped.x + dx * radius, y: snapped.y + dy * radius };
+  for (let r = 1; r <= maxRadiusSteps; r++) {
+    for (const [dx, dy] of ringDirs) {
+      const candidate = { x: snapped.x + dx * r, y: snapped.y + dy * r };
       if (!overlapsAny(candidate, size, blocks)) return candidate;
     }
   }
+  // Fallback to original snapped (should rarely happen)
   return snapped;
 }
 
