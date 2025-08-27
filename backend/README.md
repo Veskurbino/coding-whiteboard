@@ -59,3 +59,104 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Testing WebSocket (Reverb) Functionality
+
+A test controller is available to verify that WebSocket messages are working with Reverb.
+
+### How to Test
+
+1. Start your Laravel backend and ensure Reverb is running.
+2. Visit the following URL in your browser or use a tool like curl/Postman:
+
+    http://localhost:8001/test-websocket
+
+3. This will trigger a test message to be broadcast via WebSocket using the `MessageSent` event.
+4. Check your frontend or WebSocket client to confirm the message is received.
+
+You can also pass a custom message as a query parameter:
+
+    http://localhost:8001/test-websocket?message=HelloFromTest
+
+### Frontend WebSocket Test Page
+
+A simple frontend page is available to visually verify that WebSocket messages are received in real time.
+
+1. Start your Laravel backend and ensure Reverb is running.
+2. Open your browser and go to:
+
+    http://localhost:8001/websocket-test
+
+3. Trigger a test message by visiting:
+
+    http://localhost:8001/test-websocket
+
+4. You should see the message appear instantly on the frontend test page.
+
+You can open multiple browser tabs to see real-time updates across clients.
+
+## Reverb setup (WebSockets)
+
+Add these to your `.env` and adjust ports if needed:
+
+```
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=local
+REVERB_APP_KEY=local
+REVERB_APP_SECRET=local
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8080
+REVERB_SCHEME=http
+```
+
+Then clear config cache:
+
+```
+php artisan config:clear
+```
+
+## Start servers
+
+In two terminals:
+
+```
+php artisan serve --port=8001
+php artisan reverb:start
+```
+
+The Reverb server typically shows: `Starting server on 0.0.0.0:8080 (127.0.0.1).` Use that port in your client.
+
+## Test: backend → frontend
+
+1. Open the test page:
+
+   http://localhost:8001/websocket-test
+
+2. Trigger a broadcast from the backend:
+
+   http://localhost:8001/test-websocket
+
+3. The message should appear on the page immediately.
+
+You can also send a custom message:
+
+   http://localhost:8001/test-websocket?message=HelloFromTest
+
+## Test: frontend → backend
+
+1. Open:
+
+   http://localhost:8001/websocket-test
+
+2. Use the form at the top to send a message. The page POSTs to `/test-websocket` and the backend broadcasts it. You should see your message appear live below.
+
+## Troubleshooting
+
+- “Unable to parse URI: https://:443”
+  - Set `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` in `.env`, then `php artisan config:clear`.
+- Connection not “connected” on the test page
+  - Ensure `php artisan reverb:start` is running, and the page is using the same host/port (defaults to `127.0.0.1:8080`).
+- Broadcasts not sending
+  - Ensure `BROADCAST_CONNECTION=reverb` and `REVERB_*` keys are set.
+- Check logs
+  - Backend logs: `backend/storage/logs/laravel.log`.
