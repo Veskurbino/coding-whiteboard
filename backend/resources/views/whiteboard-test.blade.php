@@ -147,6 +147,26 @@
 		const langSelect = document.getElementById('langSelect');
 		const aiPreview = document.getElementById('aiPreview');
 
+		const HLJS_LANG_CDN = {
+			php: 'php', java: 'java', csharp: 'csharp', cpp: 'cpp', python: 'python',
+			typescript: 'typescript', javascript: 'javascript', ruby: 'ruby', kotlin: 'kotlin', swift: 'swift'
+		};
+		function ensureHljsLanguage(langId, cb) {
+			try {
+				if (window.hljs && hljs.getLanguage && hljs.getLanguage(langId)) { cb && cb(); return; }
+			} catch (_) {}
+			const langFile = HLJS_LANG_CDN[langId];
+			if (!langFile) { cb && cb(); return; }
+			const existing = document.querySelector(`script[data-hljs-lang="${langId}"]`);
+			if (existing) { existing.addEventListener('load', () => cb && cb()); return; }
+			const s = document.createElement('script');
+			s.src = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/${langFile}.min.js`;
+			s.async = true;
+			s.setAttribute('data-hljs-lang', langId);
+			s.onload = () => cb && cb();
+			document.head.appendChild(s);
+		}
+
 		function highlightPreviewWithRetry(retries = 20) {
 			try {
 				if (window.hljs && typeof hljs.highlightElement === 'function') {
@@ -158,8 +178,25 @@
 		}
 		function renderPreview(codeText) {
 			if (!aiPreview) return;
-			aiPreview.textContent = codeText || '';
-			highlightPreviewWithRetry();
+			const desiredLang = languageSpec(langSelect.value).hljs;
+			const code = codeText || '';
+			ensureHljsLanguage(desiredLang, () => {
+				try {
+					let html;
+					if (window.hljs && hljs.getLanguage && hljs.getLanguage(desiredLang)) {
+						html = hljs.highlight(code, { language: desiredLang, ignoreIllegals: true }).value;
+					} else if (window.hljs && typeof hljs.highlightAuto === 'function') {
+						html = hljs.highlightAuto(code).value;
+					} else {
+						html = code.replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]));
+					}
+					aiPreview.className = 'hljs';
+					aiPreview.innerHTML = html;
+				} catch (_) {
+					aiPreview.className = '';
+					aiPreview.textContent = code;
+				}
+			});
 		}
 		function cleanAiText(text) {
 			let t = (text || '').trim();
@@ -187,6 +224,7 @@
 		function setPreviewLanguage(langKey) {
 			const spec = languageSpec(langKey);
 			aiPreview.className = 'language-' + spec.hljs;
+			ensureHljsLanguage(spec.hljs, () => highlightPreviewWithRetry());
 		}
 
 		const canvas = document.getElementById('board');
