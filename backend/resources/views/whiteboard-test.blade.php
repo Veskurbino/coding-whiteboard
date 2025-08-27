@@ -3,12 +3,12 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Whiteboard Test Page</title>
+	<title>Confirma Greenboard</title>
 	<style>
 		body { font-family: Arial, sans-serif; margin: 2em; }
 		#boardWrap { border: 1px solid #ccc; padding: 0.5em; margin-bottom: 1em; }
 		#board { border: 1px solid #999; background: #fff; width: 100%; height: 420px; display: block; }
-			.toolbar { display: flex; gap: 0.5em; align-items: center; margin: 0.5em 0; flex-wrap: wrap; }
+		.toolbar { display: flex; gap: 0.5em; align-items: center; margin: 0.5em 0; flex-wrap: wrap; }
 		#messages { border: 1px solid #ccc; padding: 0.75em; min-height: 90px; max-height: 180px; overflow: auto; background: #f9f9f9; }
 		.msg { margin-bottom: 0.5em; }
 		.user { font-weight: bold; }
@@ -25,8 +25,9 @@
 		#ai { width: 100%; min-height: 320px; max-height: 520px; overflow: auto; font-family: Consolas, "Courier New", monospace; }
 		#aiPreviewWrap { margin-top: 0.5em; border: 1px solid #ddd; }
 		#aiPreviewWrap pre { margin: 0; padding: 0.75em 1em; overflow: auto; }
+		#langSelect { border: 1px solid var(--brand-200); border-radius: 8px; background: #fff; color: var(--text-strong); }
 
-		/* Confirma green theme (excludes AI preview area) */
+		/* Confirma green theme (restore) - excludes AI preview area */
 		:root {
 			--brand-50: #ecfdf5;
 			--brand-100: #d1fae5;
@@ -50,13 +51,13 @@
 		button:hover { background: var(--brand-700); }
 		.dot.connected { background: var(--brand-600); }
 		.dot.connecting { background: #f59e0b; }
-		/* Ensure AI preview keeps its own (dark) theme */
+		/* keep AI preview dark theme */
 		#aiPreviewWrap { border-color: #ddd; background: transparent; }
 	</style>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
 </head>
 <body>
-	<h1>Whiteboard Test Page</h1>
+	<h1>Confirma Greenboard</h1>
 	<div id="status">Connecting...</div>
 
 	<div class="toolbar">
@@ -70,7 +71,6 @@
 	<div id="boardWrap">
 		<div class="toolbar">
 			<span class="badge">Whiteboard</span>
-			<button type="button" id="modeSelectBtn">Select/Move</button>
 			<button type="button" id="modeAddBtn">Add Class/Interface</button>
 			<button type="button" id="modeConnectBtn">Connect</button>
 			<select id="nodeType" title="Node type">
@@ -91,6 +91,19 @@
 	</div>
 
 	<div class="toolbar">
+		<span class="badge">Language</span>
+		<select id="langSelect" title="Target language">
+			<option value="php" selected>PHP</option>
+			<option value="java">Java</option>
+			<option value="csharp">C#</option>
+			<option value="cpp">C++</option>
+			<option value="python">Python</option>
+			<option value="typescript">TypeScript</option>
+			<option value="javascript">JavaScript</option>
+			<option value="ruby">Ruby</option>
+			<option value="kotlin">Kotlin</option>
+			<option value="swift">Swift</option>
+		</select>
 		<button type="button" id="analyzeBtn">Analyze</button>
 	</div>
 
@@ -118,7 +131,6 @@
 		const configuredPort = (configuredPortOpt && Number(configuredPortOpt)) ? Number(configuredPortOpt) : 8080;
 		const appKey = @json(config('broadcasting.connections.reverb.key')) || 'local';
 
-		// Always prefer the backend host as seen by the client URL, so remote clients don't connect to 127.0.0.1
 		const host = window.location.hostname;
 		const port = configuredPort;
 
@@ -132,10 +144,12 @@
 		const wsDot = document.getElementById('wsDot');
 		const saveSharedBtn = document.getElementById('saveSharedBtn');
 		const loadSharedBtn = document.getElementById('loadSharedBtn');
+		const langSelect = document.getElementById('langSelect');
 		const aiPreview = document.getElementById('aiPreview');
+
 		function highlightPreviewWithRetry(retries = 20) {
 			try {
-				if (window.hljs && typeof hljs.highlightElement === 'function' && hljs.getLanguage && hljs.getLanguage('php')) {
+				if (window.hljs && typeof hljs.highlightElement === 'function') {
 					hljs.highlightElement(aiPreview);
 					return;
 				}
@@ -149,19 +163,34 @@
 		}
 		function cleanAiText(text) {
 			let t = (text || '').trim();
-			// Remove triple-backtick fences if present
 			const fenceMatch = t.match(/^```[a-zA-Z0-9]*\n([\s\S]*?)```\s*$/);
 			if (fenceMatch) t = fenceMatch[1];
-			// Strip surrounding quotes if the whole payload is quoted
 			if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith('\'') && t.endsWith('\''))) {
 				t = t.slice(1, -1);
 			}
 			return t;
 		}
+		function languageSpec(langKey) {
+			switch (langKey) {
+				case 'java': return { name: 'Java', hljs: 'java', guidance: 'Use Java 17+, Maven or Gradle, proper packages.' };
+				case 'csharp': return { name: 'C#', hljs: 'csharp', guidance: '.NET 8, namespaces, project structure.' };
+				case 'cpp': return { name: 'C++', hljs: 'cpp', guidance: 'Use modern C++20, headers and sources.' };
+				case 'python': return { name: 'Python', hljs: 'python', guidance: 'Use Python 3.11, packages and modules.' };
+				case 'typescript': return { name: 'TypeScript', hljs: 'typescript', guidance: 'ES2020 modules, tsconfig, types.' };
+				case 'javascript': return { name: 'JavaScript', hljs: 'javascript', guidance: 'ES modules, classes.' };
+				case 'ruby': return { name: 'Ruby', hljs: 'ruby', guidance: 'Modules/classes, idiomatic Ruby.' };
+				case 'kotlin': return { name: 'Kotlin', hljs: 'kotlin', guidance: 'JVM target, packages.' };
+				case 'swift': return { name: 'Swift', hljs: 'swift', guidance: 'Swift 5.9, modules.' };
+				default: return { name: 'PHP', hljs: 'php', guidance: 'PHP 8.2, PSR-12, namespaces, Composer autoload.' };
+			}
+		}
+		function setPreviewLanguage(langKey) {
+			const spec = languageSpec(langKey);
+			aiPreview.className = 'language-' + spec.hljs;
+		}
 
 		const canvas = document.getElementById('board');
 		const ctx = canvas.getContext('2d');
-		const modeSelectBtn = document.getElementById('modeSelectBtn');
 		const modeAddBtn = document.getElementById('modeAddBtn');
 		const modeConnectBtn = document.getElementById('modeConnectBtn');
 		const clearBtn = document.getElementById('clearBtn');
@@ -172,6 +201,7 @@
 		const addMethBtn = document.getElementById('addMethBtn');
 
 		let mode = 'select';
+		let pendingAdd = false;
 		let nodes = [];
 		let edges = [];
 		let draggingNodeId = null;
@@ -318,7 +348,7 @@
 			const rect = canvas.getBoundingClientRect();
 			const x = ev.clientX - rect.left;
 			const y = ev.clientY - rect.top;
-			if (mode === 'add') { addNode(x, y, nodeTypeSel.value, null); return; }
+			if (pendingAdd) { addNode(x, y, nodeTypeSel.value, null); pendingAdd = false; sessionStatus.textContent = ''; return; }
 			const n = nodeAt(x, y);
 			if (mode === 'select') {
 				if (n) {
@@ -350,8 +380,7 @@
 			if (n) { const newLabel = prompt('Set name for ' + n.type, n.label) || n.label; n.label = newLabel; draw(); scheduleBroadcast(); }
 		});
 
-		modeSelectBtn.onclick = () => { mode = 'select'; };
-		modeAddBtn.onclick = () => { mode = 'add'; };
+		modeAddBtn.onclick = () => { pendingAdd = true; sessionStatus.textContent = 'Click on canvas to add a ' + nodeTypeSel.value; setTimeout(()=>{ if (pendingAdd) sessionStatus.textContent=''; }, 3000); };
 		modeConnectBtn.onclick = () => { mode = 'connect'; connectStartNodeId = null; };
 		clearBtn.onclick = () => { if (confirm('Clear whiteboard?')) { nodes = []; edges = []; selectedIds.clear(); draw(); scheduleBroadcast(); } };
 		deleteBtn.onclick = () => { deleteSelected(); scheduleBroadcast(); };
@@ -457,7 +486,7 @@
 		window.Echo.channel('public').listen('.MessageSent', (e) => {
 			const name = e.user && (e.user.name || e.user.username || e.user.id) ? (e.user.name || e.user.username || e.user.id) : 'Unknown';
 			if (name === 'AI') {
-				// Render AI code in the preview for all clients
+				setPreviewLanguage(langSelect.value);
 				renderPreview(cleanAiText(e.message || ''));
 				return;
 			}
@@ -481,10 +510,12 @@
 		});
 
 		analyzeBtn.addEventListener('click', async () => {
+			setPreviewLanguage(langSelect.value);
 			renderPreview('// Analyzing...');
 			try {
 				const program = { classes: nodes.filter(n => n.type === 'class').map(n => ({ id: n.id, name: n.label, properties: n.properties, methods: n.methods })), interfaces: nodes.filter(n => n.type === 'interface').map(n => ({ id: n.id, name: n.label, methods: n.methods, properties: n.properties })), modules: nodes.filter(n => n.type === 'module').map(n => ({ id: n.id, name: n.label })), relationships: edges.map(e => ({ source: e.source, target: e.target, type: e.kind || 'association' })) };
-				const summary = 'You are an expert software engineer. Generate a complete, idiomatic codebase from the provided program model. Use inheritance where relationships.type == "inherits" (source extends target). Implement interfaces where applicable. Create sensible module/folder structure. Output ONLY code (no explanations). Prefer PHP when ambiguous. Use properties and methods as defined.';
+				const spec = languageSpec(langSelect.value);
+				const summary = `You are an expert ${spec.name} engineer. Generate a complete, idiomatic ${spec.name} codebase from the provided program model. ${spec.guidance} Use object-oriented design where appropriate. Output ONLY ${spec.name} code (no explanations).`;
 				const resp = await fetch('/api/v1/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ graph: program, summary }) });
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
 				const data = await resp.json();
