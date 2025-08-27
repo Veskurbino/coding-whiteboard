@@ -70,15 +70,17 @@ export default function WhiteboardCanvas() {
     const { x, y } = stagePointerPos();
     if (tool === "rect") {
       const groupId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const rectId = addElement({ type: "rect", position: { x, y }, width: 300, height: 200, groupId });
+      const rectId = addElement({ type: "rect", position: { x, y }, width: 320, height: 200, groupId });
+      updateElement(rectId, (prev: any) => ({ ...prev, position: { x: x - 160, y: y - 100 } }));
       const labelId = addElement({ type: "text", position: { x, y }, text: "", fontSize: 16, align: "center", groupId });
-      updateElement(labelId, (prev: any) => ({ ...prev, position: { x: x + 150, y: y + 100 } }));
+      updateElement(labelId, (prev: any) => ({ ...prev, position: { x, y } }));
       setDrawingId(rectId);
     } else if (tool === "ellipse") {
       const groupId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const ellId = addElement({ type: "ellipse", position: { x, y }, width: 300, height: 200, groupId });
+      const ellId = addElement({ type: "ellipse", position: { x, y }, width: 320, height: 200, groupId });
+      updateElement(ellId, (prev: any) => ({ ...prev, position: { x: x - 160, y: y - 100 } }));
       const labelId = addElement({ type: "text", position: { x, y }, text: "", fontSize: 16, align: "center", groupId });
-      updateElement(labelId, (prev: any) => ({ ...prev, position: { x: x + 150, y: y + 100 } }));
+      updateElement(labelId, (prev: any) => ({ ...prev, position: { x, y } }));
       setDrawingId(ellId);
     } else if (tool === "arrow") {
       const id = addElement({ type: "arrow", position: { x, y }, points: [x, y, x + 100, y + 100] });
@@ -87,7 +89,8 @@ export default function WhiteboardCanvas() {
       const id = addElement({ type: "text", position: { x, y }, text: "Text" });
       selectElement(id);
     } else if (tool === "code") {
-      const id = addElement({ type: "code", position: { x, y }, width: 300, height: 200, code: "", language: "typescript" });
+      const id = addElement({ type: "code", position: { x, y }, width: 320, height: 200, code: "", language: "typescript" });
+      updateElement(id, (prev: any) => ({ ...prev, position: { x: x - 160, y: y - 100 } }));
       selectElement(id);
     }
   };
