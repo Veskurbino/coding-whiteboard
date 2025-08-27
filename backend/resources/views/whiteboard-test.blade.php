@@ -23,7 +23,37 @@
 		.dot.connected { background:#2b7; }
 		.dot.disconnected { background:#e33; }
 		#ai { width: 100%; min-height: 320px; max-height: 520px; overflow: auto; font-family: Consolas, "Courier New", monospace; }
+		#aiPreviewWrap { margin-top: 0.5em; border: 1px solid #ddd; }
+		#aiPreviewWrap pre { margin: 0; padding: 0.75em 1em; overflow: auto; }
+
+		/* Confirma green theme (excludes AI preview area) */
+		:root {
+			--brand-50: #ecfdf5;
+			--brand-100: #d1fae5;
+			--brand-200: #a7f3d0;
+			--brand-600: #16a34a;
+			--brand-700: #15803d;
+			--text-strong: #0b3d2e;
+			--bg-soft: #f0fff4;
+		}
+
+		body { background: var(--bg-soft); color: var(--text-strong); }
+		h1 { color: var(--brand-700); }
+		#boardWrap { border-color: var(--brand-200); background: #ffffff; border-radius: 10px; }
+		#board { border-color: var(--brand-600); }
+		.toolbar { background: var(--brand-50); border: 1px solid var(--brand-200); border-radius: 10px; }
+		.badge { background: var(--brand-100); border-color: var(--brand-200); color: var(--brand-700); }
+		#messages { border-color: var(--brand-200); background: var(--brand-50); }
+		input[type="text"] { border: 1px solid var(--brand-200); border-radius: 8px; background: #fff; color: var(--text-strong); }
+		input[type="text"]:focus { outline: 2px solid var(--brand-600); border-color: var(--brand-600); }
+		button { background: var(--brand-600); color: #fff; border: 1px solid var(--brand-700); border-radius: 8px; cursor: pointer; }
+		button:hover { background: var(--brand-700); }
+		.dot.connected { background: var(--brand-600); }
+		.dot.connecting { background: #f59e0b; }
+		/* Ensure AI preview keeps its own (dark) theme */
+		#aiPreviewWrap { border-color: #ddd; background: transparent; }
 	</style>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
 </head>
 <body>
 	<h1>Whiteboard Test Page</h1>
@@ -60,23 +90,28 @@
 		<canvas id="board"></canvas>
 	</div>
 
-	<form id="sendForm" class="toolbar">
-		<input type="text" id="name" placeholder="Your name (optional)" />
-		<input type="text" id="message" placeholder="Type a message" required />
-		<button type="submit">Send</button>
+	<div class="toolbar">
 		<button type="button" id="analyzeBtn">Analyze</button>
-		<span id="sendResult" style="margin-left: 1em;"></span>
-	</form>
+	</div>
 
-	<label for="ai">AI Response (code)</label>
-	<textarea id="ai" placeholder="AI analysis/code will appear here..." readonly></textarea>
+	<div class="badge" style="margin-top: 1em;">AI Response (code)</div>
+	<div id="aiPreviewWrap"><pre><code id="aiPreview" class="language-php"></code></pre></div>
 
 	<div id="messages" style="margin-top: 1em;">
 		<em>Waiting for messages...</em>
 	</div>
 
+	<form id="sendForm" class="toolbar">
+		<input type="text" id="name" placeholder="Your name (optional)" />
+		<input type="text" id="message" placeholder="Type a message" required />
+		<button type="submit">Send</button>
+		<span id="sendResult" style="margin-left: 1em;"></span>
+	</form>
+
 	<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/php.min.js"></script>
 	<script>
 		const configuredHost = @json(config('broadcasting.connections.reverb.options.host')) || '';
 		const configuredPortOpt = @json(config('broadcasting.connections.reverb.options.port'));
@@ -93,11 +128,36 @@
 		const inputMessage = document.getElementById('message');
 		const inputName = document.getElementById('name');
 		const analyzeBtn = document.getElementById('analyzeBtn');
-		const aiTextarea = document.getElementById('ai');
 		const sessionStatus = document.getElementById('sessionStatus');
 		const wsDot = document.getElementById('wsDot');
 		const saveSharedBtn = document.getElementById('saveSharedBtn');
 		const loadSharedBtn = document.getElementById('loadSharedBtn');
+		const aiPreview = document.getElementById('aiPreview');
+		function highlightPreviewWithRetry(retries = 20) {
+			try {
+				if (window.hljs && typeof hljs.highlightElement === 'function' && hljs.getLanguage && hljs.getLanguage('php')) {
+					hljs.highlightElement(aiPreview);
+					return;
+				}
+			} catch (_) {}
+			if (retries > 0) setTimeout(() => highlightPreviewWithRetry(retries - 1), 100);
+		}
+		function renderPreview(codeText) {
+			if (!aiPreview) return;
+			aiPreview.textContent = codeText || '';
+			highlightPreviewWithRetry();
+		}
+		function cleanAiText(text) {
+			let t = (text || '').trim();
+			// Remove triple-backtick fences if present
+			const fenceMatch = t.match(/^```[a-zA-Z0-9]*\n([\s\S]*?)```\s*$/);
+			if (fenceMatch) t = fenceMatch[1];
+			// Strip surrounding quotes if the whole payload is quoted
+			if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith('\'') && t.endsWith('\''))) {
+				t = t.slice(1, -1);
+			}
+			return t;
+		}
 
 		const canvas = document.getElementById('board');
 		const ctx = canvas.getContext('2d');
@@ -396,12 +456,16 @@
 
 		window.Echo.channel('public').listen('.MessageSent', (e) => {
 			const name = e.user && (e.user.name || e.user.username || e.user.id) ? (e.user.name || e.user.username || e.user.id) : 'Unknown';
-			if (name === 'AI') return; // hide AI responses from chat
+			if (name === 'AI') {
+				// Render AI code in the preview for all clients
+				renderPreview(cleanAiText(e.message || ''));
+				return;
+			}
 			const messages = document.getElementById('messages');
 			if (messages.querySelector('em')) messages.innerHTML = '';
 			const div = document.createElement('div');
 			div.className = 'msg';
-			div.innerHTML = `<span class="user">${name}:</span> ${e.message}`;
+			div.innerHTML = `<span class=\"user\">${name}:</span> ${e.message}`;
 			messages.appendChild(div);
 		});
 
@@ -417,17 +481,17 @@
 		});
 
 		analyzeBtn.addEventListener('click', async () => {
-			aiTextarea.value = '// Analyzing...';
+			renderPreview('// Analyzing...');
 			try {
 				const program = { classes: nodes.filter(n => n.type === 'class').map(n => ({ id: n.id, name: n.label, properties: n.properties, methods: n.methods })), interfaces: nodes.filter(n => n.type === 'interface').map(n => ({ id: n.id, name: n.label, methods: n.methods, properties: n.properties })), modules: nodes.filter(n => n.type === 'module').map(n => ({ id: n.id, name: n.label })), relationships: edges.map(e => ({ source: e.source, target: e.target, type: e.kind || 'association' })) };
 				const summary = 'You are an expert software engineer. Generate a complete, idiomatic codebase from the provided program model. Use inheritance where relationships.type == "inherits" (source extends target). Implement interfaces where applicable. Create sensible module/folder structure. Output ONLY code (no explanations). Prefer PHP when ambiguous. Use properties and methods as defined.';
 				const resp = await fetch('/api/v1/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ graph: program, summary }) });
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
 				const data = await resp.json();
-				aiTextarea.value = data.response || '[No response]';
+				renderPreview(cleanAiText(data.response || '[No response]'));
 			} catch (e) {
 				console.error('Analyze failed', e);
-				aiTextarea.value = '// Analyze failed: ' + e.message;
+				renderPreview('// Analyze failed: ' + e.message);
 			}
 		});
 
