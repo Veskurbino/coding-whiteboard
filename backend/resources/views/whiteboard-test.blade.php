@@ -9,6 +9,7 @@
 		#boardWrap { border: 1px solid #ccc; padding: 0.5em; margin-bottom: 1em; }
 		#board { border: 1px solid #999; background: #fff; width: 100%; height: 420px; display: block; }
 		.toolbar { display: flex; gap: 0.5em; align-items: center; margin: 0.5em 0; flex-wrap: wrap; }
+		#topToolbar { padding-left: 0.75em; padding-right: 0.75em; }
 		#messages { border: 1px solid #ccc; padding: 0.75em; min-height: 90px; max-height: 180px; overflow: auto; background: #f9f9f9; }
 		.msg { margin-bottom: 0.5em; }
 		.user { font-weight: bold; }
@@ -64,13 +65,13 @@
 	<h1>Confirma Greenboard</h1>
 	<div id="status">Connecting...</div>
 
-	<div class="toolbar">
+	<div id="topToolbar" class="toolbar">
 		<span class="badge">Shared Whiteboard</span>
 		<button type="button" id="saveSharedBtn">Save</button>
 		<button type="button" id="loadSharedBtn">Load</button>
 		<span id="sessionStatus" class="small"></span>
 		<span id="wsDot" class="dot connecting" title="WebSocket status"></span>
-		<span id="presenceCount" class="small" style="margin-left:8px;">Clients: 1</span>
+		<span id="presenceCount" class="small" style="margin-left:auto;">Connected clients: 1</span>
 	</div>
 
 	<div id="boardWrap">
@@ -542,7 +543,7 @@
 				});
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
 				const json = await resp.json();
-				presenceCountEl.textContent = 'Clients: ' + (json.count || 1);
+				presenceCountEl.textContent = 'Connected clients: ' + (json.count || 1);
 			} catch (e) {
 				// keep silent, maybe offline temporarily
 			}
@@ -553,7 +554,7 @@
 				const resp = await fetch('/api/v1/presence/count');
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
 				const json = await resp.json();
-				presenceCountEl.textContent = 'Clients: ' + (json.count || 1);
+				presenceCountEl.textContent = 'Connected clients: ' + (json.count || 1);
 			} catch (_) {}
 		}
 
