@@ -9,6 +9,6 @@ Route::get('/', function () {
 
 Route::get('/test-websocket', [TestWebSocketController::class, 'sendTestMessage']);
 Route::post('/test-websocket', [TestWebSocketController::class, 'receiveFromFrontend']);
-Route::get('/websocket-test', function () {
-    return view('websocket-test');
+Route::get('/whiteboard-test', function () {
+    return view('whiteboard-test');
 });

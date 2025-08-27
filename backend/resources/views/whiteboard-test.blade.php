@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Test Page</title>
+    <title>Whiteboard Test Page</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 2em; }
         #messages { border: 1px solid #ccc; padding: 1em; min-height: 200px; background: #f9f9f9; }
@@ -11,23 +11,29 @@
         .user { font-weight: bold; }
         #status { margin-bottom: 1em; color: #555; }
         form { margin: 1em 0; }
-        input, button { padding: 0.5em; }
+        input, button, textarea { padding: 0.5em; }
+        #ai { width: 100%; min-height: 160px; margin-top: 1em; }
+        .row { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
     </style>
 </head>
 <body>
-    <h1>WebSocket Test Page</h1>
+    <h1>Whiteboard Test Page</h1>
     <div id="status">Connecting...</div>
 
-    <form id="sendForm">
+    <form id="sendForm" class="row">
         <input type="text" id="name" placeholder="Your name (optional)" />
         <input type="text" id="message" placeholder="Type a message" required />
         <button type="submit">Send</button>
+        <button type="button" id="analyzeBtn">Analyze</button>
         <span id="sendResult" style="margin-left: 1em;"></span>
     </form>
 
     <div id="messages">
         <em>Waiting for messages...</em>
     </div>
+
+    <label for="ai">AI Response</label>
+    <textarea id="ai" placeholder="AI analysis will appear here..." readonly></textarea>
 
     <!-- Laravel Echo and Pusher JS -->
     <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
@@ -45,6 +51,8 @@
         const sendResult = document.getElementById('sendResult');
         const inputMessage = document.getElementById('message');
         const inputName = document.getElementById('name');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const aiTextarea = document.getElementById('ai');
 
         window.Echo = new window.Echo({
             broadcaster: 'pusher',
@@ -102,12 +110,39 @@
                     }),
                 });
                 if (!response.ok) throw new Error('HTTP ' + response.status);
-                const data = await response.json();
+                await response.json();
                 sendResult.textContent = 'Sent!';
                 inputMessage.value = '';
             } catch (err) {
                 console.error('Send failed', err);
                 sendResult.textContent = 'Failed to send';
+            }
+        });
+
+        // Analyze: build a simple graph from current messages as mock input
+        analyzeBtn.addEventListener('click', async () => {
+            aiTextarea.value = 'Analyzing...';
+            try {
+                // Example graph: nodes are messages, edges in sequence
+                const msgEls = Array.from(document.querySelectorAll('#messages .msg'));
+                const nodes = msgEls.map((el, idx) => ({ id: 'n'+idx, type: 'message', x: 0, y: idx*80, data: { html: el.innerHTML } }));
+                const edges = nodes.slice(1).map((n, idx) => ({ source: nodes[idx].id, target: n.id }));
+                const graph = { nodes, edges };
+
+                const resp = await fetch('/api/v1/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ graph }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                aiTextarea.value = data.response || '[No response]';
+            } catch (e) {
+                console.error('Analyze failed', e);
+                aiTextarea.value = 'Analyze failed: ' + e.message;
             }
         });
     </script>

@@ -78,14 +78,14 @@ You can also pass a custom message as a query parameter:
 
     http://localhost:8001/test-websocket?message=HelloFromTest
 
-### Frontend WebSocket Test Page
+### Frontend Whiteboard Test Page
 
 A simple frontend page is available to visually verify that WebSocket messages are received in real time.
 
 1. Start your Laravel backend and ensure Reverb is running.
 2. Open your browser and go to:
 
-    http://localhost:8001/websocket-test
+    http://localhost:8001/whiteboard-test
 
 3. Trigger a test message by visiting:
 
@@ -130,7 +130,7 @@ The Reverb server typically shows: `Starting server on 0.0.0.0:8080 (127.0.0.1).
 
 1. Open the test page:
 
-   http://localhost:8001/websocket-test
+   http://localhost:8001/whiteboard-test
 
 2. Trigger a broadcast from the backend:
 
@@ -146,7 +146,7 @@ You can also send a custom message:
 
 1. Open:
 
-   http://localhost:8001/websocket-test
+   http://localhost:8001/whiteboard-test
 
 2. Use the form at the top to send a message. The page POSTs to `/test-websocket` and the backend broadcasts it. You should see your message appear live below.
 
@@ -160,3 +160,88 @@ You can also send a custom message:
   - Ensure `BROADCAST_CONNECTION=reverb` and `REVERB_*` keys are set.
 - Check logs
   - Backend logs: `backend/storage/logs/laravel.log`.
+
+## REST API (v1)
+
+### Data model
+
+- Projects: groups of work, own multiple canvases
+- Canvases: a graph workspace under a project
+- Nodes: vertices on a canvas with type, position, data
+- Edges: connections between nodes with optional label/data
+- Snapshots: saved versions of a canvas graph for restore/versioning
+
+### Migrations
+
+Tables: `projects`, `canvases`, `nodes`, `edges`, `snapshots`.
+
+### Base URL
+
+```
+http://localhost:8001/api/v1
+```
+
+### Projects
+
+- GET `/projects`
+- POST `/projects` { name, description?, user_id? }
+- GET `/projects/{id}`
+- PUT `/projects/{id}`
+- DELETE `/projects/{id}`
+
+### Canvases
+
+- GET `/canvases`
+- POST `/canvases` { project_id, name, metadata? }
+- GET `/canvases/{id}`
+- PUT `/canvases/{id}`
+- DELETE `/canvases/{id}`
+- GET `/canvases/{id}/graph` → { nodes: [...], edges: [...] }
+- PUT `/canvases/{id}/graph` body: { nodes: [{ id?, type, x, y, data? }...], edges: [{ source_node_id?|source, target_node_id?|target, label?, data? }...] }
+
+### Nodes
+
+- POST `/nodes` { canvas_id, type, x, y, data? }
+- GET `/nodes/{id}`
+- PUT `/nodes/{id}`
+- DELETE `/nodes/{id}`
+
+### Edges
+
+- POST `/edges` { canvas_id, source_node_id, target_node_id, label?, data? }
+- GET `/edges/{id}`
+- PUT `/edges/{id}`
+- DELETE `/edges/{id}`
+
+### Snapshots
+
+- GET `/canvases/{id}/snapshots`
+- POST `/canvases/{id}/snapshots` { name?, graph, metadata? }
+- GET `/canvases/{id}/snapshots/{snapshotId}`
+- POST `/canvases/{id}/snapshots/{snapshotId}/restore` → returns stored graph
+
+### Notes
+
+- All endpoints return JSON. Validate errors return HTTP 422.
+- Authentication/authorization is not enabled yet; add as needed.
+- For large graphs, prefer the graph endpoints to minimize round-trips.
+
+### Analyze (Gemini)
+
+- Env: add to `.env`
+
+```
+GEMINI_API_KEY=your_api_key_here
+```
+
+- Endpoint:
+  - POST `/api/v1/analyze` body: `{ graph: { nodes: [...], edges: [...] }, project_id?, canvas_id?, model?, summary? }`
+  - Returns: `{ id, model, response }`
+  - Also broadcasts the AI response as a chat message from "AI" on the public channel.
+
+- From the test page (`/whiteboard-test`):
+  - Click "Analyze" to POST the current on-screen messages as a simple graph.
+  - The AI response is shown in the "AI Response" textarea and streamed to the messages panel via WebSocket.
+
+- Data persistence:
+  - Stored in table `analyses` with `input_json`, `response_text`, `model`, and `metadata`.
