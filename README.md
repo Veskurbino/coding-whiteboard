@@ -8,33 +8,18 @@ A real-time collaborative code whiteboard platform that allows multiple users to
 ### 1. Real-Time Collaboration
 - Multi-user simultaneous editing
 - Real-time cursor positions and user presence indicators
-- Live code synchronization across all connected users (set remote branch to poll)
-- Collaborative drawing tools for text boxes diagrams and annotations
 
-### 2. Code Editor block Features
-- Syntax highlighting for multiple programming languages
-- Code auto-completion and suggestions
-- Line numbering and code folding
-- Multiple cursors support
-- Code formatting and linting
-- Error highlighting and suggestions
-- Code block address data compared to git repository
-
-### 3. Whiteboard Features
-- Drawing tools (pen, shapes, text)
-- Code blocks that can be moved and resized on the canvas
-- Ability to create/generate arrows and connections between code blocks
-- Ability to generate architecture diagrams based on git repository data
+### 2. Whiteboard Features
+- Post-it notes
+   - Text
+   - Tags, which map to colors per unique set of tags
+- Select one or more notes
+   - Move
+   - etc..
 - Zoom and pan capabilities
 - Infinite canvas support
 
-### 4. Collaboration Tools
-- Chat with AI prompts (agentic coding support)
-- User cursors and highlights
-- Ability to save session data
-- Export functionality (PNG, PDF, code files)
-
-### 5. Project Management
+### 3. Project Management
 - Project/Session organization
 - Session history and versioning
 - Integration with version control systems
@@ -47,7 +32,6 @@ A real-time collaborative code whiteboard platform that allows multiple users to
    - Next.js for server-side rendering and routing
 
 2. **UI Components**
-   - Monaco Editor for code editing
    - Konva.js for canvas manipulation
    - TailwindCSS for styling
    - Material-UI or Chakra UI for components
@@ -79,25 +63,19 @@ A real-time collaborative code whiteboard platform that allows multiple users to
 ## Security Requirements
 - Secure WebSocket connections
 - JWT-based authentication
-- Rate limiting
 - Input sanitization
-- CORS policies
-- Data encryption at rest and in transit
 
 ## Performance Requirements
-- Low latency (< 100ms) for real-time updates
 - Efficient canvas rendering
-- Optimized network payload
 - Offline support with sync on reconnection
 
 ## Development Phases
 
 ### Phase 1: MVP
 - Basic real-time code editor
-- Simple whiteboard features
+- Whiteboard features
 - Session management
 - Basic collaboration tools
-- Git repository connection
 
 ### Phase 2: Enhanced Features
 - AI agent integration capabilities (MCP server)
