@@ -78,6 +78,43 @@ A real-time collaborative code whiteboard platform that allows multiple users to
 - Session management
 - Basic collaboration tools
 
+### Frontend MVP (this repo)
+- Next.js + TypeScript app lives under `src/frontend`
+- Canvas tools: select, pan, rect, ellipse, arrow, text, code block
+- Code editing: Monaco modal attached to code blocks
+- Export: JSON and PNG
+- Autosave: debounced; saves to backend API when configured, falls back to localStorage
+- Placeholder API base: `NEXT_PUBLIC_API_BASE` env var
+
+### Preliminary Backend API Contract
+- PUT `/boards/:id` saves a complete board document
+- GET `/boards/:id` returns a complete board document
+
+Board document shape (WhiteboardDocument):
+
+```
+{
+  id: string,
+  title: string,
+  elements: Array<{
+    id: string,
+    type: "rect"|"ellipse"|"arrow"|"text"|"code",
+    position: { x: number, y: number },
+    width?: number,
+    height?: number,
+    points?: number[],
+    text?: string,
+    code?: string,
+    language?: string,
+    selected?: boolean,
+    createdAt: number,
+    updatedAt: number
+  }>,
+  viewport: { x: number, y: number, scale: number },
+  updatedAt: number
+}
+```
+
 ### Phase 2: Enhanced Features
 - AI agent integration capabilities (MCP server)
 - Chat log with AI prompting possibility
