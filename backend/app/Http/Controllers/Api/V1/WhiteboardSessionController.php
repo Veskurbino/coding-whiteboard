@@ -73,14 +73,16 @@ class WhiteboardSessionController extends Controller
             'data' => 'required|array',
             'clientId' => 'nullable|string',
         ]);
+        // Persist last shared state for newcomers
+        Cache::put('whiteboard:last', $validated['data'], 60 * 60 * 24);
         WhiteboardUpdated::dispatch(null, $validated['data'], $validated['clientId'] ?? null);
         return response()->json(['ok' => true]);
     }
 
     public function loadShared()
     {
-        // Stateless: returns empty by default; can be extended to cache last shared state if needed
-        return response()->json(['data' => [ 'nodes' => [], 'edges' => [] ]]);
+        $data = Cache::get('whiteboard:last', [ 'nodes' => [], 'edges' => [] ]);
+        return response()->json(['data' => $data]);
     }
 
     // Presence tracking (simple cache-based heartbeat)

@@ -58,6 +58,12 @@
 		#copyCodeBtn { position: absolute; top: 6px; right: 6px; border-radius: 6px; padding: 6px 8px; display: inline-flex; align-items: center; gap: 6px; background: var(--brand-600); border: 1px solid var(--brand-700); color: #fff; }
 		#copyCodeBtn:hover { background: var(--brand-700); }
 		#copyCodeBtn svg { width: 16px; height: 16px; fill: currentColor; }
+
+		/* QR toggle and panel */
+		#qrToggleBtn { background: var(--brand-600); color: #fff; border: 1px solid var(--brand-700); border-radius: 8px; padding: 6px 10px; }
+		#qrToggleBtn:hover { background: var(--brand-700); }
+		#qrPanel { position: fixed; top: 12px; right: 12px; background: #111; color: #eee; border: 1px solid #333; border-radius: 10px; padding: 10px; z-index: 9999; display: none; box-shadow: 0 6px 22px rgba(0,0,0,0.35); }
+		#qrPanel .url { margin-top: 8px; font-size: 12px; color: #bbb; word-break: break-all; }
 	</style>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
 </head>
@@ -70,6 +76,12 @@
 		<span id="sessionStatus" class="small"></span>
 		<span id="wsDot" class="dot connecting" title="WebSocket status"></span>
 		<span id="presenceCount" class="small" style="margin-left:auto;">Connected clients: 1</span>
+		<button id="qrToggleBtn" type="button" title="Show QR code">QR</button>
+	</div>
+
+	<div id="qrPanel">
+		<div id="qrCode" style="width:256px;height:256px"></div>
+		<div class="url" id="qrUrl"></div>
 	</div>
 
 	<div id="boardWrap">
@@ -135,7 +147,9 @@
 	<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/php.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 	<script>
+        const SERVER_IP = @json(gethostbyname(gethostname()));
 		const configuredHost = @json(config('broadcasting.connections.reverb.options.host')) || '';
 		const configuredPortOpt = @json(config('broadcasting.connections.reverb.options.port'));
 		const configuredPort = (configuredPortOpt && Number(configuredPortOpt)) ? Number(configuredPortOpt) : 8080;
@@ -156,6 +170,29 @@
 		const aiPreview = document.getElementById('aiPreview');
 		const copyCodeBtn = document.getElementById('copyCodeBtn');
 		const presenceCountEl = document.getElementById('presenceCount');
+		const qrToggleBtn = document.getElementById('qrToggleBtn');
+		const qrPanel = document.getElementById('qrPanel');
+		const qrUrlEl = document.getElementById('qrUrl');
+		let qrInstance = null;
+
+		function computeAccessUrl() {
+			const proto = window.location.protocol;
+			const portPart = window.location.port ? (':' + window.location.port) : '';
+			const hostCandidate = (SERVER_IP && SERVER_IP !== '127.0.0.1') ? SERVER_IP : window.location.hostname;
+			return `${proto}//${hostCandidate}${portPart}${window.location.pathname}`;
+		}
+
+		function ensureQr() {
+			const url = computeAccessUrl();
+			qrUrlEl.textContent = url;
+			if (!qrInstance) {
+				qrInstance = new QRCode(document.getElementById('qrCode'), { text: url, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M });
+			} else {
+				// Clear and re-make (library lacks simple update API)
+				document.getElementById('qrCode').innerHTML = '';
+				qrInstance = new QRCode(document.getElementById('qrCode'), { text: url, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M });
+			}
+		}
 
 		const HLJS_LANG_CDN = {
 			php: 'php', java: 'java', csharp: 'csharp', cpp: 'cpp', python: 'python',
@@ -469,6 +506,10 @@
 					presenceTimer = setInterval(() => { sendPresenceHeartbeat(); }, 5000);
 					sendPresenceHeartbeat();
 					refreshPresenceCount();
+					// Prepare QR now that we know the page loaded
+					ensureQr();
+					// Immediately load the latest shared board on connect
+					loadShared();
 				} else if (states.current === 'disconnected') {
 					clearInterval(presenceTimer);
 				}
@@ -605,6 +646,20 @@
 			setTimeout(() => { copyCodeBtn.querySelector('span').textContent = 'Copy'; }, 1400);
 		});
 
+		qrToggleBtn.addEventListener('click', () => {
+			if (qrPanel.style.display === 'none' || qrPanel.style.display === '') {
+				ensureQr();
+				const r = qrToggleBtn.getBoundingClientRect();
+				qrPanel.style.top = Math.round(r.bottom + 8) + 'px';
+				qrPanel.style.right = '12px';
+				qrPanel.style.display = 'block';
+				qrToggleBtn.textContent = 'Hide QR';
+			} else {
+				qrPanel.style.display = 'none';
+				qrToggleBtn.textContent = 'QR';
+			}
+		});
+
 		sendForm.addEventListener('submit', async (ev) => {
 			ev.preventDefault();
 			sendResult.textContent = 'Sending...';
@@ -633,6 +688,7 @@
 			}
 		});
 
+		// Initial best-effort load in case WS connect is delayed
 		loadShared();
 	</script>
 </body>
