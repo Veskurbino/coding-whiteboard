@@ -9,6 +9,7 @@ export default function HomePage() {
       </p>
       <div className="flex gap-3">
         <Link href="/board/local-mvp" className="btn btn-primary">Open Whiteboard</Link>
+        <Link href="/sticky" className="btn">Open Sticky Board</Link>
         <Link href="/about" className="btn">About</Link>
       </div>
     </div>

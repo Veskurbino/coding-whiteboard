@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import React from "react";
+import { createPortal } from "react-dom";
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
 type Props = {
@@ -20,8 +21,17 @@ export function CodeEditorModal({ isOpen, initialCode, language, onClose, onSave
   }, [initialCode, language]);
 
   if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50"
+      onMouseDownCapture={(e) => { e.stopPropagation(); }}
+      onClickCapture={(e) => { e.stopPropagation(); }}
+      onWheelCapture={(e) => { e.stopPropagation(); e.preventDefault(); }}
+      onKeyDownCapture={(e) => { e.stopPropagation(); }}
+      onContextMenu={(e) => { e.stopPropagation(); }}
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="w-[900px] max-w-[95vw] h-[600px] bg-white rounded-lg shadow-lg flex flex-col overflow-hidden">
         <div className="p-3 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -56,10 +66,14 @@ export function CodeEditorModal({ isOpen, initialCode, language, onClose, onSave
             onChange={(val) => setCode(val || "")}
             theme="vs-dark"
             options={{ minimap: { enabled: false } }}
+            onMount={(editor: any) => {
+              try { editor.focus(); } catch {}
+            }}
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
