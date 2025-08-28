@@ -1,0 +1,6 @@
+html, body, #__next { height: 100%; }
+body { margin: 0; }
+/* Improve default Konva canvas contrast with CSS variables from Chakra */
+canvas { outline: none; }
+
+

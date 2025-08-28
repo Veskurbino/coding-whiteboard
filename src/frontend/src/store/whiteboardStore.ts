@@ -25,13 +25,14 @@ type WhiteboardState = {
   activeTool: Tool;
   board?: WhiteboardDocument;
   stageRef?: any;
-  getSelectedElement: () => WhiteboardElement | undefined;
+  getSelectedElements: () => WhiteboardElement[] | undefined;
   setActiveTool: (tool: Tool) => void;
   startNewBoard: (id: string) => void;
   setViewport: (x: number, y: number, scale: number) => void;
   addElement: (el: NewElementInput) => string;
   updateElement: (id: string, updater: (el: WhiteboardElement) => WhiteboardElement) => void;
   selectElement: (id?: string) => void;
+  openElement: (id?: string) => void;
   clearBoard: () => void;
   setElements: (els: WhiteboardElement[]) => void;
   setStageRef: (ref: any) => void;
@@ -43,7 +44,7 @@ export const useWhiteboardStore = create<WhiteboardState>()(
   devtools((set, get) => ({
     activeTool: "select",
     setActiveTool: (tool) => set({ activeTool: tool }),
-    getSelectedElement: () => get().board?.elements.find((e) => e.selected),
+    getSelectedElements: () => get().board?.elements.filter((e) => e.selected),
     startNewBoard: (id) =>
       set({
         board: {
@@ -85,7 +86,19 @@ export const useWhiteboardStore = create<WhiteboardState>()(
     selectElement: (id) =>
       set((state) => {
         if (!state.board) return state;
-        const elements = state.board.elements.map((e) => ({ ...e, selected: id ? e.id === id : false }));
+        let elements = state.board.elements;
+        if (id) {
+          const ids = state.board.elements.filter((e) => e.selected).map((e) => e.id);
+          elements = state.board.elements.map((e) => ({ ...e, selected: e.id in ids || e.id === id }));
+        } else {
+          elements = state.board.elements.map((e) => ({ ...e, selected: false }));
+        }
+        return { board: { ...state.board, elements } };
+      }),
+    openElement: (id) =>
+      set((state) => {
+        if (!state.board) return state;
+        const elements = state.board.elements.map((e) => ({ ...e, open: id ? e.id === id : false }));
         return { board: { ...state.board, elements } };
       }),
     clearBoard: () => set((state) => (state.board ? { board: { ...state.board, elements: [] } } : state)),
