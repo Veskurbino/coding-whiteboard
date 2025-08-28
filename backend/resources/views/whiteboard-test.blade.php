@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Confirma Greenboard</title>
+	<title>Greenboard</title>
 	<style>
 		body { font-family: Arial, sans-serif; margin: 2em; }
 		#boardWrap { border: 1px solid #ccc; padding: 0.5em; margin-bottom: 1em; }
@@ -62,13 +62,11 @@
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
 </head>
 <body>
-	<h1>Confirma Greenboard</h1>
+	<h1>Greenboard</h1>
 	<div id="status">Connecting...</div>
 
 	<div id="topToolbar" class="toolbar">
 		<span class="badge">Shared Whiteboard</span>
-		<button type="button" id="saveSharedBtn">Save</button>
-		<button type="button" id="loadSharedBtn">Load</button>
 		<span id="sessionStatus" class="small"></span>
 		<span id="wsDot" class="dot connecting" title="WebSocket status"></span>
 		<span id="presenceCount" class="small" style="margin-left:auto;">Connected clients: 1</span>
@@ -154,8 +152,6 @@
 		const analyzeBtn = document.getElementById('analyzeBtn');
 		const sessionStatus = document.getElementById('sessionStatus');
 		const wsDot = document.getElementById('wsDot');
-		const saveSharedBtn = document.getElementById('saveSharedBtn');
-		const loadSharedBtn = document.getElementById('loadSharedBtn');
 		const langSelect = document.getElementById('langSelect');
 		const aiPreview = document.getElementById('aiPreview');
 		const copyCodeBtn = document.getElementById('copyCodeBtn');
@@ -513,7 +509,7 @@
 			try {
 				const resp = await fetch('/api/v1/whiteboard/save', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ data: serializeWhiteboard(), clientId }) });
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
-				sessionStatus.textContent = 'Saved'; setTimeout(()=>sessionStatus.textContent='', 1200);
+				// Quiet success (no UI badge now that buttons are removed)
 			} catch (e) { console.error('Save failed', e); sessionStatus.textContent = 'Save failed'; }
 		}
 		async function loadShared() {
@@ -522,7 +518,7 @@
 				if (!resp.ok) throw new Error('HTTP ' + resp.status);
 				const json = await resp.json();
 				applyWhiteboard(json.data);
-				sessionStatus.textContent = 'Loaded'; setTimeout(()=>sessionStatus.textContent='', 1200);
+				// Quiet success
 			} catch (e) { console.error('Load failed', e); sessionStatus.textContent = 'Load failed'; }
 		}
 		function scheduleBroadcast() { clearTimeout(broadcastTimer); broadcastTimer = setTimeout(() => { saveShared(); }, 250); }
@@ -558,8 +554,7 @@
 			} catch (_) {}
 		}
 
-		saveSharedBtn.onclick = () => saveShared();
-		loadSharedBtn.onclick = () => loadShared();
+		// Removed manual Save/Load buttons
 
 		window.Echo.channel('public').listen('.MessageSent', (e) => {
 			const name = e.user && (e.user.name || e.user.username || e.user.id) ? (e.user.name || e.user.username || e.user.id) : 'Unknown';
